@@ -7,8 +7,11 @@
 	<canvas id="a" width="1000" height="650"></canvas>
 </body>
 	<script>
-        var graph = new Graph('a');
-        graph.plot(Math.sin);
+        var size = 50;
+        var graph = new Graph('a', -size, size, -size / 2, size / 2);
+        graph.plot(function (x) {
+            return Math.sin(x) / x + Math.cos(x);
+        });
 	</script>
     <style>
         #a {

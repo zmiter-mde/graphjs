@@ -3,6 +3,9 @@
  */
 function Graph(id, leftX, rightX, bottomY, topY) {
     var vm = this;
+    var MAGIC_HEIGHT_CONST = 0.9;
+    vm.accuracy = 0.002;
+
     vm.plotNet = plotNet;
     vm.plotAxes = plotAxes;
     vm.setBorders = setBorders;
@@ -13,6 +16,11 @@ function Graph(id, leftX, rightX, bottomY, topY) {
     vm.height = vm.canvas.height;
     vm.setBorders(leftX, rightX, bottomY, topY);
     vm.context = vm.canvas.getContext("2d");
+
+    vm.plotNet();
+    vm.plotAxes();
+
+    return vm;
 
     function plotNet() {
         vm.context.beginPath();
@@ -68,16 +76,68 @@ function Graph(id, leftX, rightX, bottomY, topY) {
 
     function plot(f) {
         vm.context.beginPath();
-        var x = vm.leftX, stepX = (vm.rightX - vm.leftX) / 100, y = 0;
-        vm.context.moveTo(x, getYPosition(f(x)));
-        while (x < vm.rightX) {
-            x += stepX;
-            y = f(x);
-            console.log(getXPosition(x) + ' ' + getYPosition(y));
-            vm.context.lineTo(getXPosition(x), getYPosition(y));
+        var stepX = (vm.rightX - vm.leftX) * vm.accuracy,
+            state = {
+                x: vm.leftX, y: 0, x1: 0, y1: 0, lastY: 0, firstMove: true
+            };
+        while (state.x < vm.rightX) {
+            state.y = f(state.x);
+            state = drawOneLine(state);
+            state.x += stepX;
         }
         vm.context.strokeStyle = 'green';
         vm.context.stroke();
+    }
+
+    function drawOneLine(state) {
+        state.x1 = getXPosition(state.x);
+        if (state.y !== undefined && !isNaN(state.y)) {
+            state = performGraphicDrawing(state);
+        } else {
+            drawCircle(state.x1, vm.height / 2);
+        }
+        return state;
+    }
+
+    function drawCircle(x, y) {
+        vm.context.beginPath();
+        vm.context.fillStyle = 'red';
+        vm.context.arc(x, y, 5, 0, Math.PI * 2, true);
+        vm.context.closePath();
+        vm.context.fill();
+    }
+
+    function performGraphicDrawing(state) {
+        state.y1 = getYPosition(state.y);
+        if (state.firstMove) {
+            vm.context.moveTo(state.x1, state.y1);
+            state.firstMove = false;
+        } else {
+            if (bigDifference(state)) {
+                vm.context.moveTo(state.x1, state.y1);
+                drawCircle(state.x1, state.y1);
+            } else {
+                if (considerableDifference(state)) {
+                    // set graphic stroke
+                    //vm.context.beginPath();
+                    vm.context.strokeStyle = 'green';
+                    vm.context.lineTo(state.x1, state.y1);
+                    vm.context.stroke();
+                } else {
+                    vm.context.moveTo(state.x1, state.y1);
+                }
+            }
+        }
+        return state;
+    }
+
+    function bigDifference(state) {
+        return (state.lastY <= 0 && state.y1 >= vm.height) ||
+               (state.lastY >= vm.height && state.y1 <= 0);
+    }
+
+    function considerableDifference(state) {
+        return Math.abs(state.lastY - state.y1) <= vm.height * MAGIC_HEIGHT_CONST;
     }
 
     function getYPosition(y) {
@@ -87,8 +147,4 @@ function Graph(id, leftX, rightX, bottomY, topY) {
     function getXPosition(x) {
         return vm.width * (x - vm.leftX) / (vm.rightX - vm.leftX);
     }
-
-    vm.plotNet();
-    vm.plotAxes();
-    return vm;
 }
